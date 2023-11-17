@@ -1,0 +1,16 @@
+{
+  "name": "fetch-package-lock",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "expressjs/express#4.18.2",
+    "node-fetch": "github:node-fetch/node-fetch",
+    "trivial": "file:../trivial"
+  }
+}
