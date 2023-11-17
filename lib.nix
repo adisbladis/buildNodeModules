@@ -63,6 +63,7 @@ lib.fix (self: {
       }) packageLock.packages;
     };
 
+    # Substitute dependency references in package.json with Nix store paths
     packageJSON' = package // {
       dependencies = lib.mapAttrs (name: _: packageLock'.packages.${"node_modules/${name}"}.resolved) package.dependencies;
     };
@@ -71,11 +72,16 @@ lib.fix (self: {
   pkgs.runCommand "node-modules" {
     nativeBuildInputs = [
       nodejs
-      pkgs.git
+      pkgs.gitMinimal
     ];
+
+    env.npm_config_nodedir = pkgs.srcOnly nodejs;
+    env.npm_config_node_gyp = "${nodejs}/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js";
+
     passAsFile = [ "package" "packageLock" ];
     package = builtins.toJSON packageJSON';
     packageLock = builtins.toJSON packageLock';
+
   } ''
     export HOME=$(mktemp -d)
 
