@@ -3,7 +3,7 @@
 let
   inherit (builtins) match elemAt toJSON removeAttrs;
   inherit (lib) importJSON;
-  inherit (pkgs) fetchurl;
+  inherit (pkgs) fetchurl stdenv;
 
 in
 lib.fix (self: {
@@ -52,8 +52,8 @@ lib.fix (self: {
     , package ? importJSON (packageRoot + "/package.json")
     , packageLock ? importJSON (packageRoot + "/package-lock.json")
     , nodejs
-    ,
-    }:
+    , ...
+    }@attrs:
     let
       packageLock' = packageLock // {
         packages =
@@ -78,33 +78,50 @@ lib.fix (self: {
       };
 
     in
-    pkgs.runCommand "node-modules"
-      {
-        nativeBuildInputs = [
-          nodejs
-          pkgs.gitMinimal
-        ];
+    stdenv.mkDerivation (removeAttrs attrs [ "packageRoot" "package" "packageLock" "nodejs" ] // {
+      pname = "${package.name}-node-modules";
+      inherit (package) version;
 
-        env.npm_config_nodedir = pkgs.srcOnly nodejs;
-        env.npm_config_node_gyp = "${nodejs}/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js";
+      nativeBuildInputs = attrs.nativeBuildInputs or [ ] ++ [
+        nodejs
+        pkgs.gitMinimal
+      ];
 
-        passAsFile = [ "package" "packageLock" ];
-        package = toJSON packageJSON';
-        packageLock = toJSON packageLock';
+      env = attrs.env or { } // {
+        npm_config_nodedir = pkgs.srcOnly nodejs;
+        npm_config_node_gyp = "${nodejs}/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js";
+      };
 
-      } ''
-      export HOME=$(mktemp -d)
+      passAsFile = [ "package" "packageLock" ];
+      package = toJSON packageJSON';
+      packageLock = toJSON packageLock';
 
-      mkdir $out
-      cd $out
+      dontUnpack = true;
+      dontBuild = true;
 
-      cp "$packagePath" package.json
-      cp "$packageLockPath" package-lock.json
+      configurePhase = ''
+        runHook preConfigure
 
-      npm config set offline true
-      npm config set progress false
+        export HOME=$(mktemp -d)
+        npm config set offline true
+        npm config set progress false
 
-      npm install
-    '';
+        mkdir $out
+        cp "$packagePath" $out/package.json
+        cp "$packageLockPath" $out/package-lock.json
+
+        runHook postConfigure
+      '';
+
+      installPhase = ''
+        runHook preBuild
+
+        cd $out
+        npm install
+        cd -
+
+        runHook postBuild
+      '';
+    });
 
 })
