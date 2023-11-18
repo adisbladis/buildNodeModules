@@ -3,7 +3,7 @@
 let
   inherit (builtins) match elemAt toJSON removeAttrs;
   inherit (lib) importJSON;
-  inherit (pkgs) fetchurl stdenv callPackages;
+  inherit (pkgs) fetchurl stdenv callPackages runCommand;
 
 in
 lib.fix (self: {
@@ -46,14 +46,11 @@ lib.fix (self: {
       else null
     );
 
-  # Build node modules from package.json & package-lock.json
-  buildNodeModules =
+  fetchNodeModules =
     { packageRoot ? null
     , package ? importJSON (packageRoot + "/package.json")
     , packageLock ? importJSON (packageRoot + "/package-lock.json")
-    , nodejs
-    , ...
-    }@attrs:
+    }:
     let
       packageLock' = packageLock // {
         packages =
@@ -76,58 +73,51 @@ lib.fix (self: {
       packageJSON' = package // {
         dependencies = lib.mapAttrs (name: _: packageLock'.packages.${"node_modules/${name}"}.resolved) package.dependencies;
       };
-
     in
+    runCommand "${package.name}-${package.version}-sources" {
+      pname = package.name;
+      inherit (package) version;
+
+      passAsFile = [ "package" "packageLock" ];
+
+      package = toJSON packageJSON';
+      packageLock = toJSON packageLock';
+    } ''
+      mkdir $out
+      cp "$packagePath" $out/package.json
+      cp "$packageLockPath" $out/package-lock.json
+    '';
+
+  # Build node modules from package.json & package-lock.json
+  buildNodeModules =
+    { packageRoot ? null
+    , package ? importJSON (packageRoot + "/package.json")
+    , packageLock ? importJSON (packageRoot + "/package-lock.json")
+    , nodejs
+    , ...
+    }@attrs:
     stdenv.mkDerivation (removeAttrs attrs [ "packageRoot" "package" "packageLock" "nodejs" ] // {
       pname = "${package.name}-node-modules";
       inherit (package) version;
 
-      nativeBuildInputs = attrs.nativeBuildInputs or [ ] ++ [
-        nodejs
-        pkgs.gitMinimal
-      ];
+      dontUnpack = true;
 
-      env = attrs.env or { } // {
-        npm_config_nodedir = pkgs.srcOnly nodejs;
-        npm_config_node_gyp = "${nodejs}/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js";
+      nodeModules = self.fetchNodeModules {
+        inherit packageRoot package packageLock;
       };
 
-      passAsFile = [ "package" "packageLock" ];
-      package = toJSON packageJSON';
-      packageLock = toJSON packageLock';
-
-      dontUnpack = true;
-      dontBuild = true;
-
-      configurePhase = ''
-        runHook preConfigure
-
-        export HOME=$(mktemp -d)
-        npm config set offline true
-        npm config set progress false
-
-        mkdir $out
-        cp "$packagePath" $out/package.json
-        cp "$packageLockPath" $out/package-lock.json
-
-        runHook postConfigure
-      '';
+      nativeBuildInputs = [
+        nodejs
+        self.hooks.npmConfigHook
+      ];
 
       installPhase = ''
-        runHook preBuild
-
-        cd $out
-
-        npm install --ignore-scripts $npmInstallFlags "''${npmInstallFlagsArray[@]}" $npmFlags "''${npmFlagsArray[@]}"
-
-        patchShebangs node_modules
-
-        npm rebuild $npmRebuildFlags "''${npmRebuildFlagsArray[@]}" $npmFlags "''${npmFlagsArray[@]}"
-
-        patchShebangs node_modules
-        cd -
-
-        runHook postBuild
+        runHook preInstall
+        mkdir $out
+        cp package.json $out/
+        cp package-lock.json $out/
+        mv node_modules $out/
+        runHook postInstall
       '';
     });
 

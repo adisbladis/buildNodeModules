@@ -28,22 +28,15 @@ stdenv.mkDerivation {
   src = ./.;
 
   nativeBuildInputs = [
-    buildNodeModules.hooks.linkNodeModulesHook
+    buildNodeModules.hooks.npmConfigHook
     nodejs
+    npmHooks.npmBuildHook
+    npmHooks.npmInstallHook
   ];
 
-  nodeModules = buildNodeModules.buildNodeModules {
+  nodeModules = buildNodeModules.fetchNodeModules {
     packageRoot = ./.;
-    inherit nodejs;
   };
-
-  buildPhase = ''
-    npm run build
-  '';
-
-  installPhase = ''
-    cp -r dist $out
-  '';
 }
 ```
 
