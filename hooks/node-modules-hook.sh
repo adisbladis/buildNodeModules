@@ -1,9 +1,8 @@
 linkNodeModulesHook() {
-    echo "Executing linkNodeModulesShellHook"
+    echo "Executing linkNodeModulesHook"
     runHook preShellHook
 
     @nodejs@ @script@ @storePrefix@ "${nodeModules}/node_modules"
-    ls -la node_modules
     if test -f node_modules/.bin; then
         export PATH=$(readlink -f node_modules/.bin):$PATH
     fi
