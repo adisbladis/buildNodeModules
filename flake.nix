@@ -12,8 +12,8 @@
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
 
       # TODO: Come up with a name
-      selfLib = import ./lib.nix { inherit pkgs lib; };
-      inherit (selfLib) fetchModule buildNodeModules;
+      selfLib = import ./default.nix { inherit pkgs lib; };
+      inherit (selfLib) buildNodeModules;
 
       system = "x86_64-linux";
     in

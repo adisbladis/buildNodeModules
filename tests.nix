@@ -3,7 +3,7 @@
 , testFunc ? lib.debug.runTests
 }:
 let
-  inherit (import ./lib.nix { inherit pkgs lib; }) fetchModule;
+  inherit (import ./default.nix { inherit pkgs lib; }) fetchModule;
 
   fixture = lib.importJSON ./fixtures/kitchen_sink/package-lock.json;
   getModule = mod: fixture.packages.${mod};
@@ -52,7 +52,7 @@ testFunc {
           inherit packageRoot;
         };
       in
-      builtins.trace src.outPath ({ type = typeOf src.outPath; base = baseNameOf src.outPath; });
+      { type = typeOf src.outPath; base = baseNameOf src.outPath; };
     expected = { type = "path"; base = "trivial"; };
   };
 }
