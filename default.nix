@@ -117,7 +117,13 @@ lib.fix (self: {
         runHook preBuild
 
         cd $out
-        npm install
+
+        npm install --ignore-scripts $npmInstallFlags "''${npmInstallFlagsArray[@]}" $npmFlags "''${npmFlagsArray[@]}"
+
+        patchShebangs node_modules
+
+        npm rebuild $npmRebuildFlags "''${npmRebuildFlagsArray[@]}" $npmFlags "''${npmFlagsArray[@]}"
+
         patchShebangs node_modules
         cd -
 
