@@ -3,11 +3,10 @@
 let
   inherit (builtins) match elemAt toJSON removeAttrs;
   inherit (lib) importJSON;
-  inherit (pkgs) fetchurl stdenv;
+  inherit (pkgs) fetchurl stdenv callPackages;
 
 in
 lib.fix (self: {
-
   # Fetch a module from package-lock.json -> packages
   fetchModule =
     { module
@@ -47,6 +46,7 @@ lib.fix (self: {
       else null
     );
 
+  # Build node modules from package.json & package-lock.json
   buildNodeModules =
     { packageRoot ? null
     , package ? importJSON (packageRoot + "/package.json")
@@ -118,10 +118,13 @@ lib.fix (self: {
 
         cd $out
         npm install
+        patchShebangs node_modules
         cd -
 
         runHook postBuild
       '';
     });
 
+  # Manage node_modules outside of the store with hooks
+  hooks = callPackages ./hooks { };
 })
