@@ -52,7 +52,7 @@ async function main() {
   // source node_modules and the non-store node_modules we don't want to overwrite
   // the non-store one.
   const unmanaged = await getUnmanagedFiles(storePrefix, files);
-  const managed = new Set(files.filter((file) => unmanaged.includes(file)));
+  const managed = new Set(files.filter((file) => ! unmanaged.includes(file)));
 
   const sourceFiles = await fs.promises.readdir(sourceModules);
   await Promise.all(
