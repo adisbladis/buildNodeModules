@@ -19,6 +19,7 @@ This is to work around issues like https://github.com/nix-community/npmlock2nix/
 
 ## Usage
 
+- `default.nix`
 ``` nix
 stdenv.mkDerivation {
   pname = "my-website";
@@ -43,5 +44,20 @@ stdenv.mkDerivation {
   installPhase = ''
     cp -r dist $out
   '';
+}
+```
+
+- `shell.nix`
+``` nix
+pkgs.mkShell {
+  packages = [
+    buildNodeModules.hooks.linkNodeModulesHook
+    nodejs
+  ];
+
+  nodeModules = buildNodeModules.buildNodeModules {
+    packageRoot = ./.;
+    inherit nodejs;
+  };
 }
 ```
