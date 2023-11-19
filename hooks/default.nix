@@ -4,10 +4,10 @@
       name = "node-modules-hook.sh";
       substitutions = {
         nodejs = lib.getExe nodejs;
-        script = ./node-modules-hook.js;
+        script = ./link-node-modules.js;
         storePrefix = builtins.storeDir;
       };
-    } ./node-modules-hook.sh;
+    } ./link-node-modules-hook.sh;
 
   npmConfigHook = makeSetupHook
     {
@@ -15,6 +15,8 @@
       substitutions = {
         nodeSrc = srcOnly nodejs;
         nodeGyp = "${nodejs}/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js";
+        canonicalizeSymlinksScript = ./canonicalize-symlinks.js;
+        storePrefix = builtins.storeDir;
       };
     } ./npm-config-hook.sh;
 }

@@ -41,10 +41,7 @@ npmConfigHook() {
     patchShebangs node_modules
 
     # Canonicalize symlinks from relative paths to the Nix store.
-    find node_modules -type l | while read link; do
-        target=$(readlink -f "$link")
-        ln -sfT "$target" "$link"
-    done
+    node @canonicalizeSymlinksScript@ @storePrefix@
 
     if [ -n "${npmRoot-}" ]; then
       popd
