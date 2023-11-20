@@ -7,6 +7,11 @@ npmConfigHook() {
       pushd "$npmRoot"
     fi
 
+    if [ -z "${nodeModules-}" ]; then
+        echo "Error: 'nodeModules' should be set when using npmConfigHook."
+        exit 1
+    fi
+
     echo "Configuring npm"
 
     export HOME="$TMPDIR"
@@ -14,18 +19,18 @@ npmConfigHook() {
     export npm_config_node_gyp="@nodeGyp@"
     npm config set offline true
     npm config set progress false
+    npm config set fund false
 
     echo "Installing patched package.json/package-lock.json"
 
     # Save original package.json/package-lock.json for closure size reductions.
     # The patched one contains store paths we don't want at runtime.
-    cp --no-preserve=mode package.json "$TMPDIR/package.json"
-    if test -f package-lock.json; then
-        # Not all packages have package-lock.json.
-        cp --no-preserve=mode package-lock.json "$TMPDIR/package-lock.json"
+    mv package.json .package.json.orig
+    if test -f package-lock.json; then # Not all packages have package-lock.json.
+        mv package-lock.json .package-lock.json.orig
     fi
-    cp -f --no-preserve=mode "${nodeModules}/package.json" "package.json"
-    cp -f --no-preserve=mode "${nodeModules}/package-lock.json" "package-lock.json"
+    cp --no-preserve=mode "${nodeModules}/package.json" package.json
+    cp --no-preserve=mode "${nodeModules}/package-lock.json" package-lock.json
 
     echo "Installing dependencies"
 
@@ -50,9 +55,9 @@ npmConfigHook() {
     node @canonicalizeSymlinksScript@ @storePrefix@
 
     # Revert to pre-patched package.json/package-lock.json for closure size reductions
-    cp "$TMPDIR/package.json" package.json
-    if test -f "$TMPDIR/package-lock.json"; then
-        cp "$TMPDIR/package-lock.json" package-lock.json
+    mv .package.json.orig package.json
+    if test -f ".package-lock.json.orig"; then
+        mv .package-lock.json.orig package-lock.json
     fi
 
     if [ -n "${npmRoot-}" ]; then
@@ -62,4 +67,4 @@ npmConfigHook() {
     echo "Finished npmConfigHook"
 }
 
-postPatchHooks+=(npmConfigHook)
+postConfigureHooks+=(npmConfigHook)
