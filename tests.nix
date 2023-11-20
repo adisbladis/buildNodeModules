@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> { }
+{ pkgs ? (let flake = builtins.getFlake (builtins.toString ./.); in flake.inputs.nixpkgs.legacyPackages.${builtins.currentSystem})
 , lib ? pkgs.lib
 , testFunc ? lib.debug.runTests
 }:
