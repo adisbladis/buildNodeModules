@@ -1,30 +1,21 @@
 {
-  description = "A very basic flake";
+  description = "buildNodeModules - The dumbest way to build NodeJS yet!";
 
-  inputs = {
-    nix-unit.url = "github:nix-community/nix-unit";
-    nix-unit.inputs.nixpkgs.follows = "nixpkgs";
-  };
-
-  outputs = { self, nixpkgs, nix-unit }:
+  outputs = { self, nixpkgs }:
     let
       inherit (nixpkgs) lib;
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
-
-      # TODO: Come up with a name
-      selfLib = import ./default.nix { inherit pkgs lib; };
-      inherit (selfLib) buildNodeModules;
-
-      system = "x86_64-linux";
     in
     {
-      libTests = import ./tests.nix {
-        inherit pkgs lib;
-        testFunc = x: x; # Don't run runTests, we use nix-unit
-      };
+      lib = lib.listToAttrs (map (system: lib.nameValuePair system (
+        import ./. {
+          inherit lib;
+          pkgs = nixpkgs.legacyPackages.${system};
+        }
+      )) lib.systems.flakeExposed);
 
-      packages.x86_64-linux.default =
-        buildNodeModules {
+      checks.x86_64-linux.default =
+        self.lib.x86_64-linux.buildNodeModules {
           packageRoot = ./fixtures/kitchen_sink;
           nodejs = pkgs.nodejs;
         };
@@ -32,9 +23,7 @@
       devShells.x86_64-linux.default = pkgs.mkShell {
         packages = [
           pkgs.nodejs
-          nix-unit.packages.${system}.default
         ];
       };
-
     };
 }
