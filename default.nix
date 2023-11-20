@@ -50,6 +50,8 @@ lib.fix (self: {
     { packageRoot ? null
     , package ? importJSON (packageRoot + "/package.json")
     , packageLock ? importJSON (packageRoot + "/package-lock.json")
+    , pname ? package.name or "unknown"
+    , version ? package.version or "0.0.0"
     }:
     let
       packageLock' = packageLock // {
@@ -73,10 +75,12 @@ lib.fix (self: {
       packageJSON' = package // {
         dependencies = lib.mapAttrs (name: _: packageLock'.packages.${"node_modules/${name}"}.resolved) package.dependencies;
       };
+
+      pname = package.name or "unknown";
+
     in
-    runCommand "${package.name}-${package.version}-sources" {
-      pname = package.name;
-      inherit (package) version;
+    runCommand "${pname}-${version}-sources" {
+      inherit pname version;
 
       passAsFile = [ "package" "packageLock" ];
 
@@ -110,6 +114,15 @@ lib.fix (self: {
         nodejs
         self.hooks.npmConfigHook
       ];
+
+      package = toJSON package;
+      packageLock = toJSON packageLock;
+      passAsFile = [ "package" "packageLock" ];
+
+      postPatch = ''
+        cp --no-preserve=mode "$packagePath" package.json
+        cp --no-preserve=mode "$packageLockPath" package-lock.json
+      '';
 
       installPhase = ''
         runHook preInstall
