@@ -30,6 +30,7 @@ stdenv.mkDerivation {
   nativeBuildInputs = [
     buildNodeModules.hooks.npmConfigHook
     nodejs
+    nodejs.passthru.python # for node-gyp
     npmHooks.npmBuildHook
     npmHooks.npmInstallHook
   ];

@@ -2,8 +2,10 @@
 
 let
   inherit (builtins) match elemAt toJSON removeAttrs;
-  inherit (lib) importJSON;
+  inherit (lib) importJSON mapAttrs;
   inherit (pkgs) fetchurl stdenv callPackages runCommand;
+
+  matchGitHubReference = match "github(.com)?:.+";
 
 in
 lib.fix (self: {
@@ -23,7 +25,6 @@ lib.fix (self: {
             if mUrl == null then
               (
                 assert packageRoot != null; {
-                  # TODO: Verify path is well formed
                   outPath = packageRoot + "/${module.resolved}";
                 }
               )
@@ -56,7 +57,7 @@ lib.fix (self: {
     let
       packageLock' = packageLock // {
         packages =
-          lib.mapAttrs
+          mapAttrs
             (_: module:
               let
                 src = self.fetchModule {
@@ -65,28 +66,45 @@ lib.fix (self: {
               in
               (removeAttrs module [
                 "link"
+                "funding"
               ]) // lib.optionalAttrs (src != null) {
                 resolved = "file:${src}";
+              } // lib.optionalAttrs (module ? dependencies) {
+                dependencies = mapAttrs
+                  (name: version: (
+                    # If the version is `latest` substitute the constraint with the
+                    # version of the dependency from the top-level of package-lock.
+                    if version == "latest" then packageLock'.packages.${"node_modules/${name}"}.version
+                    # If the version is a github reference rewrite it with the version
+                    # of the dependency from the top-level of package-lock.
+                    else if matchGitHubReference version != null then packageLock'.packages.${"node_modules/${name}"}.version
+                    # Regular version constraint
+                    else version
+                  ))
+                  module.dependencies;
               })
             packageLock.packages;
       };
 
       # Substitute dependency references in package.json with Nix store paths
       packageJSON' = package // {
-        dependencies = lib.mapAttrs (name: _: packageLock'.packages.${"node_modules/${name}"}.resolved) package.dependencies;
+        dependencies = mapAttrs (name: _: packageLock'.packages.${"node_modules/${name}"}.resolved) package.dependencies;
+      } // lib.optionalAttrs (package ? devDependencies) {
+        devDependencies = mapAttrs (name: _: packageLock'.packages.${"node_modules/${name}"}.resolved) package.devDependencies;
       };
 
       pname = package.name or "unknown";
 
     in
-    runCommand "${pname}-${version}-sources" {
-      inherit pname version;
+    runCommand "${pname}-${version}-sources"
+      {
+        inherit pname version;
 
-      passAsFile = [ "package" "packageLock" ];
+        passAsFile = [ "package" "packageLock" ];
 
-      package = toJSON packageJSON';
-      packageLock = toJSON packageLock';
-    } ''
+        package = toJSON packageJSON';
+        packageLock = toJSON packageLock';
+      } ''
       mkdir $out
       cp "$packagePath" $out/package.json
       cp "$packageLockPath" $out/package-lock.json
@@ -112,6 +130,7 @@ lib.fix (self: {
 
       nativeBuildInputs = [
         nodejs
+        nodejs.passthru.python
         self.hooks.npmConfigHook
       ];
 
