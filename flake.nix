@@ -7,12 +7,14 @@
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
     in
     {
-      lib = lib.listToAttrs (map (system: lib.nameValuePair system (
-        import ./. {
-          inherit lib;
-          pkgs = nixpkgs.legacyPackages.${system};
-        }
-      )) lib.systems.flakeExposed);
+      lib = lib.listToAttrs (map
+        (system: lib.nameValuePair system (
+          import ./. {
+            inherit lib;
+            pkgs = nixpkgs.legacyPackages.${system};
+          }
+        ))
+        lib.systems.flakeExposed);
 
       checks.x86_64-linux.default =
         self.lib.x86_64-linux.buildNodeModules {

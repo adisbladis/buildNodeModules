@@ -55,6 +55,21 @@ lib.fix (self: {
     , version ? package.version or "0.0.0"
     }:
     let
+      mapLockDependencies =
+        mapAttrs
+          (name: version: (
+            # Substitute the constraint with the version of the dependency from the top-level of package-lock.
+            if (
+              # if the version is `latest`
+              version == "latest"
+              ||
+              # Or if it's a github reference
+              matchGitHubReference version != null
+            ) then packageLock'.packages.${"node_modules/${name}"}.version
+            # But not a regular version constraint
+            else version
+          ));
+
       packageLock' = packageLock // {
         packages =
           mapAttrs
@@ -70,27 +85,20 @@ lib.fix (self: {
               ]) // lib.optionalAttrs (src != null) {
                 resolved = "file:${src}";
               } // lib.optionalAttrs (module ? dependencies) {
-                dependencies = mapAttrs
-                  (name: version: (
-                    # If the version is `latest` substitute the constraint with the
-                    # version of the dependency from the top-level of package-lock.
-                    if version == "latest" then packageLock'.packages.${"node_modules/${name}"}.version
-                    # If the version is a github reference rewrite it with the version
-                    # of the dependency from the top-level of package-lock.
-                    else if matchGitHubReference version != null then packageLock'.packages.${"node_modules/${name}"}.version
-                    # Regular version constraint
-                    else version
-                  ))
-                  module.dependencies;
+                dependencies = mapLockDependencies module.dependencies;
+              } // lib.optionalAttrs (module ? optionalDependencies) {
+                optionalDependencies = mapLockDependencies module.optionalDependencies;
               })
             packageLock.packages;
       };
 
+      mapPackageDependencies = mapAttrs (name: _: packageLock'.packages.${"node_modules/${name}"}.resolved);
+
       # Substitute dependency references in package.json with Nix store paths
       packageJSON' = package // {
-        dependencies = mapAttrs (name: _: packageLock'.packages.${"node_modules/${name}"}.resolved) package.dependencies;
+        dependencies = mapPackageDependencies package.dependencies;
       } // lib.optionalAttrs (package ? devDependencies) {
-        devDependencies = mapAttrs (name: _: packageLock'.packages.${"node_modules/${name}"}.resolved) package.devDependencies;
+        devDependencies = mapPackageDependencies package.devDependencies;
       };
 
       pname = package.name or "unknown";
