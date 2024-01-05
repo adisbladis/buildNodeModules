@@ -44,7 +44,9 @@ async function main() {
   const args = process.argv.slice(2);
   const storePrefix = args[0];
 
-  await canonicalize(storePrefix, "node_modules");
+  if (fs.existsSync("node_modules")) {
+    await canonicalize(storePrefix, "node_modules");
+  }
 }
 
 main();
