@@ -6,7 +6,8 @@ let
   inherit (pkgs) fetchurl stdenv callPackages runCommand;
 
   matchGitHubReference = match "github(.com)?:.+";
-
+  getName = package: package.name or "unknown";
+  getVersion = package: package.version or "0.0.0";
 in
 lib.fix (self: {
   # Fetch a module from package-lock.json -> packages
@@ -51,8 +52,8 @@ lib.fix (self: {
     { packageRoot ? null
     , package ? importJSON (packageRoot + "/package.json")
     , packageLock ? importJSON (packageRoot + "/package-lock.json")
-    , pname ? package.name or "unknown"
-    , version ? package.version or "0.0.0"
+    , pname ? getName package
+    , version ? getVersion package
     }:
     let
       mapLockDependencies =
@@ -95,7 +96,7 @@ lib.fix (self: {
       mapPackageDependencies = mapAttrs (name: _: packageLock'.packages.${"node_modules/${name}"}.resolved);
 
       # Substitute dependency references in package.json with Nix store paths
-      packageJSON' = package // {
+      packageJSON' = package // lib.optionalAttrs (package ? dependencies) {
         dependencies = mapPackageDependencies package.dependencies;
       } // lib.optionalAttrs (package ? devDependencies) {
         devDependencies = mapPackageDependencies package.devDependencies;
@@ -127,8 +128,8 @@ lib.fix (self: {
     , ...
     }@attrs:
     stdenv.mkDerivation (removeAttrs attrs [ "packageRoot" "package" "packageLock" "nodejs" ] // {
-      pname = "${package.name}-node-modules";
-      inherit (package) version;
+      pname = "${getName package}-node-modules";
+      version = getVersion package;
 
       dontUnpack = true;
 
@@ -156,7 +157,7 @@ lib.fix (self: {
         mkdir $out
         cp package.json $out/
         cp package-lock.json $out/
-        mv node_modules $out/
+        [[ -d node_modules ]] && mv node_modules $out/
         runHook postInstall
       '';
     });
