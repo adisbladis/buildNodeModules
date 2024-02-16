@@ -7,7 +7,7 @@ let
 
   fixture = lib.importJSON ./fixtures/kitchen_sink/package-lock.json;
   getModule = mod: fixture.packages.${mod};
-  packageRoot = ./fixtures/kitchen_sink;
+  npmRoot = ./fixtures/kitchen_sink;
   inherit (builtins) typeOf baseNameOf;
 
 in
@@ -49,7 +49,7 @@ testFunc {
       let
         src = fetchModule {
           module = getModule "node_modules/trivial";
-          inherit packageRoot;
+          inherit npmRoot;
         };
       in
       { type = typeOf src.outPath; base = baseNameOf src.outPath; };
