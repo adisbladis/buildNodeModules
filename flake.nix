@@ -1,6 +1,10 @@
 {
   description = "buildNodeModules - The dumbest way to build NodeJS yet!";
 
+  inputs = {
+    nixpkgs.url = "github:adisbladis/nixpkgs/fetchnpmlock";
+  };
+
   outputs = { self, nixpkgs }:
     let
       inherit (nixpkgs) lib;
@@ -9,16 +13,13 @@
     {
       lib = lib.listToAttrs (map
         (system: lib.nameValuePair system (
-          import ./. {
-            inherit lib;
-            pkgs = nixpkgs.legacyPackages.${system};
-          }
+          pkgs.callPackage ./. { }
         ))
         lib.systems.flakeExposed);
 
       checks.x86_64-linux.default =
         self.lib.x86_64-linux.buildNodeModules {
-          packageRoot = ./fixtures/kitchen_sink;
+          npmRoot = ./fixtures/kitchen_sink;
           nodejs = pkgs.nodejs;
         };
 
