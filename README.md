@@ -35,8 +35,8 @@ stdenv.mkDerivation {
     npmHooks.npmInstallHook
   ];
 
-  nodeModules = buildNodeModules.fetchNodeModules {
-    packageRoot = ./.;
+  npmDeps = buildNodeModules.fetchNodeModules {
+    npmRoot = ./.;
   };
 }
 ```
@@ -49,8 +49,8 @@ pkgs.mkShell {
     nodejs
   ];
 
-  nodeModules = buildNodeModules.buildNodeModules {
-    packageRoot = ./.;
+  npmDeps = buildNodeModules.buildNodeModules {
+    npmRoot = ./.;
     inherit nodejs;
   };
 }
