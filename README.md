@@ -2,6 +2,8 @@
 
 The dumbest node to Nix packaging solution yet!
 
+Status: This project has been integrated into nixpkgs as [importNpmLock](https://nixos.org/manual/nixpkgs/unstable/#javascript-buildNpmPackage-importNpmLock).
+
 ## How it works
 
 ### How node_modules is built
